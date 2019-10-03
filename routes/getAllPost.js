@@ -32,14 +32,19 @@ function getAllPosts(response) {
                     localField: "postedBy",    // field in the orders collection
                     foreignField: "_id",  // field in the items collection
                     as: "user"
+                },
+            },
+            {
+                $sort: {
+                    'createtime': -1
                 }
-            }
-        ]).toArray(function(err, res) {
+            },
+        ]).toArray(function (err, res) {
             if (err) throw err;
             console.log(JSON.stringify(res));
             response.send(JSON.stringify(res));
             db.close();
-          });
+        });
 
     })
 }
