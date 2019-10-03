@@ -39,15 +39,9 @@ function checkIsUserLogin(body, response) {
         { email: user.email, password: user.password },
         function(err, result) {
           if (err) throw err;
-          console.log(result);
           if (result != null) {
-            //login successfull
             let res = {
-             user:{
-              userID: result._id,
-              userName: result.name,
-              userEmail: result.email,
-             },
+             user:result,
               message: "Login Successfullly",
               isSuccess: true
             };

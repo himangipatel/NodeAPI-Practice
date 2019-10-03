@@ -2,26 +2,67 @@ var express = require("express");
 var router = express.Router();
 var MongoClient = require("mongodb").MongoClient;
 var url = "mongodb://localhost:27017/FlutterAppAPI";
+const multer = require("multer");
 
-router.post("/", function(req, res, next) {
-  handleRegistration(req.body, res);
+
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, "./uploads/");
+  },
+  filename: function(req, file, cb) {
+    cb(null, new Date().getTime() + file.originalname);
+  }
 });
 
-function handleRegistration(body, response) {
-  console.log(body)
-  if (body.loginType === "email-password") {
-    registerUser(body, response);
-  } else if (body.loginType === "google-signin") {
-    registerGoogleUser(body, response);
+const fileFilter = (req, file, cb) => {
+  console.log(file.mimetype);
+  if (
+    file.mimetype === "image/jpeg" ||
+    file.mimetype === "image/png" ||
+    file.mimetype === "image/jpg"
+    //  || file.mimetype === "video/mp4"
+  ) {
+    cb(null, true);
+  } else {
+    cb(null, false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  // limits: {
+  //   fileSize: 1024 * 1024 * 5
+  // },
+  fileFilter: fileFilter
+});
+
+// https://www.youtube.com/watch?v=srPXMt1Q0nY
+
+router.post("/", upload.single("userImage"), function(req, res, next) {
+  console.log(req.body);
+  console.log(req.file)
+  handleRegistration(req, res);
+});
+
+// router.post("/",  function(req, res, next) {
+//   handleRegistration(req, res);
+// });
+
+function handleRegistration(req, response) {
+  console.log(req.body);
+  if (req.body.loginType === "email-password") {
+    registerUser(req, response);
+  } else if (req.body.loginType === "google-signin") {
+    registerGoogleUser(req.body, response);
   }
 }
 
-function registerUser(body, response) {
-  if (body.name === "") {
+function registerUser(req, response) {
+  if (req.body.name === "") {
     response.send(createTextResponse("Name Required", false));
-  } else if (body.email === "") {
+  } else if (req.body.email === "") {
     response.send(createTextResponse("Email Required", false));
-  } else if (body.password === "") {
+  } else if (req.body.password === "") {
     response.send(createTextResponse("Password Required"));
   } else {
     MongoClient.connect(url, function(err, db) {
@@ -30,11 +71,19 @@ function registerUser(body, response) {
       var dbo = db.db("FlutterAppAPI");
       var user = {};
 
-      user.name = body.name;
-      user.email = body.email;
-      user.password = body.password;
-      user.deviceType = body.deviceType;
-      user.loginType = body.loginType;
+      user.name = req.body.name;
+      user.email = req.body.email;
+      user.password = req.body.password;
+      user.deviceType = req.body.deviceType;
+      user.loginType = req.body.loginType;
+
+      var path = req.file.path;
+      path = path.replace(/^uploads+/i,'')
+      user.photo = path;
+      user.mobile = req.body.mobile;
+      user.department = req.body.department;
+      user.gender = req.body.gender;
+    
 
       dbo
         .collection("users")
@@ -43,16 +92,15 @@ function registerUser(body, response) {
           if (err) throw err;
           console.log(result.length);
           if (result.length == 0) {
-           
             dbo.collection("users").insertOne(user, function(err, res) {
               if (err) throw err;
               console.log(res.ops[0]);
 
               let ress = {
-                user:res.ops[0],
-                message:"User Registered",
+                user: res.ops[0],
+                message: "User Registered",
                 isSuccess: true
-              }
+              };
 
               response.send(ress);
             });
@@ -87,18 +135,18 @@ function registerGoogleUser(body, response) {
         if (err) throw err;
         console.log(result.length);
         if (result.length == 0) {
-          console.log(result)
+          console.log(result);
           dbo.collection("users").insertOne(user, function(err, res) {
             if (err) throw err;
             console.log(res.ops[0]);
 
-              let ress = {
-                user:res.ops[0],
-                message:"User Registered",
-                isSuccess: true
-              }
+            let ress = {
+              user: res.ops[0],
+              message: "User Registered",
+              isSuccess: true
+            };
 
-              response.send(ress);
+            response.send(ress);
           });
         } else {
           response.send(createTextResponse("Email already Registered", false));
